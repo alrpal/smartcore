@@ -33,14 +33,16 @@
 use crate::api::{Predictor, SupervisedEstimator};
 use crate::error::Failed;
 use crate::linalg::BaseVector;
+use crate::linalg::BaseMatrix;
+use crate::linalg::naive::dense_matrix::*;
 use crate::linalg::Matrix;
 use crate::math::num::RealNumber;
-use crate::naive_bayes::{BaseNaiveBayes, NBDistribution};
+pub use crate::naive_bayes::{BaseNaiveBayes, NBDistribution};
 use serde::{Deserialize, Serialize};
 
 /// Naive Bayes classifier for categorical features
 #[derive(Serialize, Deserialize, Debug)]
-struct CategoricalNBDistribution<T: RealNumber> {
+pub struct CategoricalNBDistribution<T: RealNumber> {
     class_labels: Vec<T>,
     class_priors: Vec<T>,
     coefficients: Vec<Vec<Vec<T>>>,
@@ -84,6 +86,7 @@ impl<T: RealNumber, M: Matrix<T>> NBDistribution<T, M> for CategoricalNBDistribu
     }
 
     fn log_likelihood(&self, class_index: usize, j: &M::RowVector) -> T {
+        
         if class_index < self.class_labels.len() {
             let mut likelihood = T::zero();
             for feature in 0..j.len() {
@@ -94,6 +97,7 @@ impl<T: RealNumber, M: Matrix<T>> NBDistribution<T, M> for CategoricalNBDistribu
                     return T::zero();
                 }
             }
+           
             likelihood
         } else {
             T::zero()
@@ -239,7 +243,7 @@ impl<T: RealNumber> Default for CategoricalNBParameters<T> {
 /// CategoricalNB implements the categorical naive Bayes algorithm for categorically distributed data.
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct CategoricalNB<T: RealNumber, M: Matrix<T>> {
-    inner: BaseNaiveBayes<T, M, CategoricalNBDistribution<T>>,
+    pub inner: BaseNaiveBayes<T, M, CategoricalNBDistribution<T>>,
 }
 
 impl<T: RealNumber, M: Matrix<T>> SupervisedEstimator<M, M::RowVector, CategoricalNBParameters<T>>
@@ -283,6 +287,22 @@ impl<T: RealNumber, M: Matrix<T>> CategoricalNB<T, M> {
     pub fn predict(&self, x: &M) -> Result<M::RowVector, Failed> {
         self.inner.predict(x)
     }
+    pub fn get_probs(&self, class_index: usize, j: &M) -> Vec<(T,T)>  {
+        //let out = self.inner.get_prob(0,j);
+        //let out2 = self.inner.get_prob(1,j);
+        let mut out = Vec::new();
+        let (rows, _) = j.shape();
+        for i in 0..rows {
+            
+            //let o: M = vec![0.];
+            //let o: M::RowVector = BaseMatrix::from_array(&[0.]).to_row_vector();
+            //println!("{:?}, {:?}",self.inner.get_prob(0,&j.get_row(i)),self.inner.get_prob(1,&j.get_row(i)));
+            out.push((self.inner.get_prob(0,&j.get_row(i)),self.inner.get_prob(1,&j.get_row(i))));
+        }
+        //(out, out2)
+        out
+        //self.inner.predict(j);
+    }
 }
 
 #[cfg(test)]
@@ -314,7 +334,7 @@ mod tests {
         let x_test = DenseMatrix::from_2d_array(&[&[0., 2., 1., 0.], &[2., 2., 0., 0.]]);
         let y_hat = cnb.predict(&x_test).unwrap();
         assert_eq!(y_hat, vec![0., 1.]);
-    }
+    }   
 
     #[test]
     fn run_categorical_naive_bayes2() {

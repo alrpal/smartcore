@@ -37,13 +37,14 @@
 //! <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 use crate::error::Failed;
 use crate::linalg::BaseVector;
+use crate::linalg::BaseMatrix;
 use crate::linalg::Matrix;
 use crate::math::num::RealNumber;
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 
 /// Distribution used in the Naive Bayes classifier.
-pub(crate) trait NBDistribution<T: RealNumber, M: Matrix<T>> {
+pub trait NBDistribution<T: RealNumber, M: Matrix<T>> {
     /// Prior of class at the given index.
     fn prior(&self, class_index: usize) -> T;
 
@@ -56,8 +57,8 @@ pub(crate) trait NBDistribution<T: RealNumber, M: Matrix<T>> {
 
 /// Base struct for the Naive Bayes classifier.
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct BaseNaiveBayes<T: RealNumber, M: Matrix<T>, D: NBDistribution<T, M>> {
-    distribution: D,
+pub struct BaseNaiveBayes<T: RealNumber, M: Matrix<T>, D: NBDistribution<T, M>> {
+    pub distribution: D,
     _phantom_t: PhantomData<T>,
     _phantom_m: PhantomData<M>,
 }
@@ -71,6 +72,10 @@ impl<T: RealNumber, M: Matrix<T>, D: NBDistribution<T, M>> BaseNaiveBayes<T, M, 
             _phantom_t: PhantomData,
             _phantom_m: PhantomData,
         })
+    }
+    pub fn get_prob(&self, class_index: usize, j: &M::RowVector) -> T {
+        //println!("classes {:?}", self.distribution.classes());
+        self.distribution.log_likelihood(class_index,j) + self.distribution.prior(class_index).ln()
     }
 
     /// Estimates the class labels for the provided data.
